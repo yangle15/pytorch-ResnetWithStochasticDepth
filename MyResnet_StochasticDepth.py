@@ -128,7 +128,7 @@ class ResNet(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.layer1 = self.make_layer(block, 16, layers[0])
         self.layer2 = self.make_layer(block, 32, layers[1], 2)
-        #self.layer3 = self.make_layer(block, 64, layers[2], 2)
+        self.layer3 = self.make_layer(block, 64, layers[2], 2)
         self.avg_pool = nn.AvgPool2d(8)
         self.fc = nn.Linear(128, num_classes)
         self.deathRateList1 = deathRateList[0:layers[0]]
@@ -151,8 +151,8 @@ class ResNet(nn.Module):
             block(self.in_channels, out_channels, stride, downsample))
         '''
         layers = block(self.in_channels, out_channels, stride, downsample)
-        self.in_channels = out_channels
         '''
+        self.in_channels = out_channels
         for i in range(1, blocks):
             layers.append(block(out_channels, out_channels))
         '''
@@ -167,19 +167,19 @@ class ResNet(nn.Module):
         out = self.relu(out)
         out = self.layer1(out, self.training, self.deathRateList1)
         out = self.layer2(out, self.training, self.deathRateList2)
-        #out = self.layer3(out)
+        out = self.layer3(out, self.training, self.deathRateList3)
         out = self.avg_pool(out)
         out = out.view(out.size(0), -1)
         out = self.fc(out)
         return out
     
     
-#use_gpu = torch.cuda.is_available();
-use_gpu = False
-deathRateList = [0.1, 0.2]
+use_gpu = torch.cuda.is_available();
+deathRateList = torch.linspace(0, 0.5, steps=2*blocks)
+
 blocks = 1
 
-resnet = ResNet(ResidualBlock, [blocks, blocks], deathRateList)
+resnet = ResNet(ResidualBlock, [blocks, blocks, blocks], deathRateList)
 if use_gpu:
     resnet.cuda()
 
@@ -189,10 +189,7 @@ lr = 0.001
 optimizer = torch.optim.Adam(resnet.parameters(), lr=lr)
 
 # Training
-total_epoch = 1
-
-deathRateList = torch.linspace(0, 0.5, steps=2*blocks)
-deathRateList = 1 - deathRateList
+total_epoch = 20
 
 for epoch in range(total_epoch):
     running_loss = 0
